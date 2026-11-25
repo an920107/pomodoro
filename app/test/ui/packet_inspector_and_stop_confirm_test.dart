@@ -38,7 +38,10 @@ void main() {
               }),
               appDatabaseProvider.overrideWithValue(database),
               preferencesStoreProvider.overrideWithValue(
-                InMemoryPreferencesStore(),
+                InMemoryPreferencesStore(
+                  isDebugMode: true,
+                  isMockBleMode: true,
+                ),
               ),
               appLoggerProvider.overrideWithValue(logger),
             ],
@@ -139,7 +142,10 @@ void main() {
               }),
               appDatabaseProvider.overrideWithValue(database),
               preferencesStoreProvider.overrideWithValue(
-                InMemoryPreferencesStore(),
+                InMemoryPreferencesStore(
+                  isDebugMode: true,
+                  isMockBleMode: true,
+                ),
               ),
               appLoggerProvider.overrideWithValue(logger),
             ],

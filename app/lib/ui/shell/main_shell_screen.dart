@@ -4,8 +4,10 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/theme/app_theme.dart';
 import '../../state/ble_providers.dart';
+import '../../state/debug_mode_controller.dart';
 import '../../state/focus_guard_controller.dart';
 import '../connection/device_scan_sheet.dart';
+import '../settings/debug_mode_sheet.dart';
 import '../settings/settings_screen.dart';
 import '../stats/stats_screen.dart';
 import '../timer/timer_screen.dart';
@@ -89,7 +91,14 @@ class MainShellScreen extends ConsumerWidget {
         child: NavigationBar(
           selectedIndex: activeTab.index,
           onDestinationSelected: (index) {
-            ref.read(selectedTabProvider.notifier).select(AppTab.values[index]);
+            final tappedTab = AppTab.values[index];
+            ref.read(selectedTabProvider.notifier).select(tappedTab);
+            final triggered = ref
+                .read(debugModeProvider.notifier)
+                .registerTabTap(isSettingsTab: tappedTab == AppTab.settings);
+            if (triggered) {
+              DebugModeSheet.show(context);
+            }
           },
           destinations: const <NavigationDestination>[
             NavigationDestination(
@@ -131,14 +140,19 @@ class _ModeBadge extends ConsumerWidget {
     final connection = ref.watch(bleConnectionProvider).asData?.value;
     final isConnected = connection?.state.isConnected ?? false;
     final isAdapterOn = connection?.isBluetoothAdapterOn ?? true;
+    final isDebug = ref.watch(debugModeProvider);
     final isMock = ref.watch(isMockBleModeProvider);
-    final label = isMock
-        ? (isConnected ? 'Mock 已連線' : 'Mock ${connection?.state.label ?? '待機'}')
+    final label = isDebug
+        ? (isMock
+            ? (isConnected ? 'Mock 已連線' : 'Mock ${connection?.state.label ?? '待機'}')
+            : (!isAdapterOn
+                ? '藍牙未開啟'
+                : (isConnected
+                    ? 'BLE 已連線'
+                    : 'BLE ${connection?.state.label ?? '未連線'}')))
         : (!isAdapterOn
             ? '藍牙未開啟'
-            : (isConnected
-                ? 'BLE 已連線'
-                : 'BLE ${connection?.state.label ?? '未連線'}'));
+            : (isConnected ? '已連線' : (connection?.state.label ?? '未連線')));
 
     return InkWell(
       key: const Key('btn_appbar_connection'),

@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/models/device_config.dart';
 import '../../state/ble_providers.dart';
 import '../../state/config_controller.dart';
+import '../../state/debug_mode_controller.dart';
 import '../connection/device_scan_sheet.dart';
 import 'focus_guard_screen.dart';
 import 'packet_inspector_screen.dart';
@@ -165,7 +166,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
 
     final configState = ref.watch(configControllerProvider);
+    final isDebug = ref.watch(debugModeProvider);
     final isMock = ref.watch(isMockBleModeProvider);
+    final connection = ref.watch(bleConnectionProvider).asData?.value;
     final locked = configState.isLocked;
     final textTheme = Theme.of(context).textTheme;
 
@@ -174,71 +177,124 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Card(
-            key: const Key('card_ble_mode_settings'),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Text(
-                          '通訊模式與藍牙裝置',
-                          style: textTheme.titleMedium,
-                        ),
-                      ),
-                      OutlinedButton.icon(
-                        key: const Key('btn_open_scan_sheet'),
-                        onPressed: () => DeviceScanSheet.show(context),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
+          if (isDebug)
+            Card(
+              key: const Key('card_ble_mode_settings'),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            '通訊模式與藍牙裝置',
+                            style: textTheme.titleMedium,
                           ),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        icon: const Icon(
-                          Icons.bluetooth_searching_rounded,
-                          size: 16,
+                        OutlinedButton.icon(
+                          key: const Key('btn_open_scan_sheet'),
+                          onPressed: () => DeviceScanSheet.show(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          icon: const Icon(
+                            Icons.bluetooth_searching_rounded,
+                            size: 16,
+                          ),
+                          label: const Text('掃描裝置'),
                         ),
-                        label: const Text('掃描裝置'),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: <Widget>[
+                        ChoiceChip(
+                          key: const Key('chip_ble_mode_mock'),
+                          label: const Text('Mock 虛擬韌體 (預設)'),
+                          selected: isMock,
+                          onSelected: (_) {
+                            ref
+                                .read(isMockBleModeProvider.notifier)
+                                .setMockMode(true);
+                          },
+                        ),
+                        ChoiceChip(
+                          key: const Key('chip_ble_mode_real'),
+                          label: const Text('Real BLE 實體連線'),
+                          selected: !isMock,
+                          onSelected: (_) {
+                            ref
+                                .read(isMockBleModeProvider.notifier)
+                                .setMockMode(false);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Card(
+              key: const Key('card_ble_device_normal'),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: <Widget>[
+                    Icon(
+                      connection?.state.isConnected == true
+                          ? Icons.bluetooth_connected_rounded
+                          : Icons.bluetooth_searching_rounded,
+                      size: 24,
+                      color: connection?.state.isConnected == true
+                          ? AppColors.signalBreak
+                          : AppColors.ink,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text('藍牙裝置連線', style: textTheme.titleMedium),
+                          const SizedBox(height: 2),
+                          Text(
+                            connection?.state.isConnected == true &&
+                                    connection?.device != null
+                                ? '已連線：${connection!.device!.name}'
+                                : '搜尋並配對附近的 SmartPomodoro 番茄鐘',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: AppColors.inkMuted,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: <Widget>[
-                      ChoiceChip(
-                        key: const Key('chip_ble_mode_mock'),
-                        label: const Text('Mock 虛擬韌體 (預設)'),
-                        selected: isMock,
-                        onSelected: (_) {
-                          ref
-                              .read(isMockBleModeProvider.notifier)
-                              .setMockMode(true);
-                        },
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      key: const Key('btn_open_scan_sheet'),
+                      onPressed: () => DeviceScanSheet.show(context),
+                      icon: const Icon(
+                        Icons.bluetooth_searching_rounded,
+                        size: 16,
                       ),
-                      ChoiceChip(
-                        key: const Key('chip_ble_mode_real'),
-                        label: const Text('Real BLE 實體連線'),
-                        selected: !isMock,
-                        onSelected: (_) {
-                          ref
-                              .read(isMockBleModeProvider.notifier)
-                              .setMockMode(false);
-                        },
-                      ),
-                    ],
-                  ),
-                ],
+                      label: const Text('掃描裝置'),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
           const SizedBox(height: 12),
           if (configState.errorMessage != null) ...<Widget>[
             Container(
@@ -575,143 +631,145 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Card(
-            key: const Key('card_packet_inspector_entry'),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
+          if (isDebug) ...<Widget>[
+            const SizedBox(height: 16),
+            Card(
+              key: const Key('card_packet_inspector_entry'),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: <Widget>[
+                    const Icon(
+                      Icons.terminal_rounded,
+                      size: 24,
+                      color: AppColors.ink,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text('BLE 封包即時監看器', style: textTheme.titleMedium),
+                          const SizedBox(height: 2),
+                          Text(
+                            '免接電腦即時檢視與篩選 TX/RX JSON、握手同步與守護日誌',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: AppColors.inkMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      key: const Key('btn_open_packet_inspector'),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const PacketInspectorScreen(),
+                          ),
+                        );
+                      },
+                      child: const Text('開啟監看器'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surfaceRecessed,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
                 children: <Widget>[
-                  const Icon(
-                    Icons.terminal_rounded,
-                    size: 24,
-                    color: AppColors.ink,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text('BLE 封包即時監看器', style: textTheme.titleMedium),
-                        const SizedBox(height: 2),
-                        Text(
-                          '免接電腦即時檢視與篩選 TX/RX JSON、握手同步與守護日誌',
-                          style: textTheme.bodySmall?.copyWith(
+                  InkWell(
+                    key: const Key('btn_toggle_diagnostics'),
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      setState(() {
+                        _diagnosticsExpanded = !_diagnosticsExpanded;
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          const Icon(
+                            Icons.verified_outlined,
+                            size: 18,
+                            color: AppColors.ink,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '通訊與虛擬韌體自檢',
+                              style: textTheme.titleMedium,
+                            ),
+                          ),
+                          Icon(
+                            _diagnosticsExpanded
+                                ? Icons.keyboard_arrow_up_rounded
+                                : Icons.keyboard_arrow_down_rounded,
                             color: AppColors.inkMuted,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  OutlinedButton(
-                    key: const Key('btn_open_packet_inspector'),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const PacketInspectorScreen(),
-                        ),
-                      );
-                    },
-                    child: const Text('開啟監看器'),
-                  ),
+                  if (_diagnosticsExpanded) ...<Widget>[
+                    const Divider(height: 1),
+                    Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          OutlinedButton.icon(
+                            key: const Key('btn_protocol_self_check'),
+                            onPressed: _protoRunning ? null : _runProtocolCheck,
+                            icon: const Icon(Icons.verified_outlined, size: 18),
+                            label: Text(
+                              _protoRunning ? '執行中...' : '執行 v1.2 協定與佇列實機自檢',
+                            ),
+                          ),
+                          if (_protoResult != null) ...<Widget>[
+                            const SizedBox(height: 10),
+                            _DiagnosticResultBox(
+                              key: const Key('txt_protocol_self_check_result'),
+                              text: _protoResult!,
+                              hasError: _protoError,
+                            ),
+                          ],
+                          const SizedBox(height: 10),
+                          OutlinedButton.icon(
+                            key: const Key('btn_mock_ble_self_check'),
+                            onPressed: _mockRunning ? null : _runMockCheck,
+                            icon: const Icon(Icons.memory_outlined, size: 18),
+                            label: Text(
+                              _mockRunning ? '執行中...' : '執行 Mock 虛擬韌體閉環自檢',
+                            ),
+                          ),
+                          if (_mockResult != null) ...<Widget>[
+                            const SizedBox(height: 10),
+                            _DiagnosticResultBox(
+                              key: const Key('txt_mock_ble_self_check_result'),
+                              text: _mockResult!,
+                              hasError: _mockError,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.surfaceRecessed,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              children: <Widget>[
-                InkWell(
-                  key: const Key('btn_toggle_diagnostics'),
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () {
-                    setState(() {
-                      _diagnosticsExpanded = !_diagnosticsExpanded;
-                    });
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        const Icon(
-                          Icons.verified_outlined,
-                          size: 18,
-                          color: AppColors.ink,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '通訊與虛擬韌體自檢',
-                            style: textTheme.titleMedium,
-                          ),
-                        ),
-                        Icon(
-                          _diagnosticsExpanded
-                              ? Icons.keyboard_arrow_up_rounded
-                              : Icons.keyboard_arrow_down_rounded,
-                          color: AppColors.inkMuted,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (_diagnosticsExpanded) ...<Widget>[
-                  const Divider(height: 1),
-                  Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        OutlinedButton.icon(
-                          key: const Key('btn_protocol_self_check'),
-                          onPressed: _protoRunning ? null : _runProtocolCheck,
-                          icon: const Icon(Icons.verified_outlined, size: 18),
-                          label: Text(
-                            _protoRunning ? '執行中...' : '執行 v1.2 協定與佇列實機自檢',
-                          ),
-                        ),
-                        if (_protoResult != null) ...<Widget>[
-                          const SizedBox(height: 10),
-                          _DiagnosticResultBox(
-                            key: const Key('txt_protocol_self_check_result'),
-                            text: _protoResult!,
-                            hasError: _protoError,
-                          ),
-                        ],
-                        const SizedBox(height: 10),
-                        OutlinedButton.icon(
-                          key: const Key('btn_mock_ble_self_check'),
-                          onPressed: _mockRunning ? null : _runMockCheck,
-                          icon: const Icon(Icons.memory_outlined, size: 18),
-                          label: Text(
-                            _mockRunning ? '執行中...' : '執行 Mock 虛擬韌體閉環自檢',
-                          ),
-                        ),
-                        if (_mockResult != null) ...<Widget>[
-                          const SizedBox(height: 10),
-                          _DiagnosticResultBox(
-                            key: const Key('txt_mock_ble_self_check_result'),
-                            text: _mockResult!,
-                            hasError: _mockError,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+          ],
         ],
       ),
     );

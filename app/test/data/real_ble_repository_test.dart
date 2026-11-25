@@ -533,6 +533,9 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            preferencesStoreProvider.overrideWithValue(
+              InMemoryPreferencesStore(isDebugMode: true, isMockBleMode: true),
+            ),
             bleClientAdapterProvider.overrideWith((ref) {
               ref.onDispose(fakeAdapter.dispose);
               return fakeAdapter;

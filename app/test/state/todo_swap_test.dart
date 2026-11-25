@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pomodoro/core/logging/app_logger.dart';
 import 'package:pomodoro/data/ble/mock_ble_repository.dart';
 import 'package:pomodoro/data/ble/mock_nvs_store.dart';
+import 'package:pomodoro/data/local/preferences_store.dart';
 import 'package:pomodoro/state/ble_providers.dart';
 import 'package:pomodoro/state/todo_controller.dart';
 
@@ -60,6 +61,9 @@ void main() {
       );
       final container = ProviderContainer(
         overrides: [
+          preferencesStoreProvider.overrideWithValue(
+            InMemoryPreferencesStore(isDebugMode: true, isMockBleMode: true),
+          ),
           mockBleRepositoryProvider.overrideWithValue(mockRepo),
         ],
       );

@@ -63,6 +63,8 @@ void main() {
         final database = InMemoryAppDatabase();
         final guardService = _MilestoneRecordingGuardService();
         final prefs = InMemoryPreferencesStore(
+          isDebugMode: true,
+          isMockBleMode: true,
           dndEnabled: true,
           appLockEnabled: true,
           blacklistedPackages: const <String>['com.google.android.calculator'],

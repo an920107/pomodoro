@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../data/ble/ble_repository.dart';
 import '../../data/ble/real_ble_repository.dart';
 import '../../state/ble_providers.dart';
+import '../../state/debug_mode_controller.dart';
 
 /// Modal bottom sheet for toggling Mock/Real BLE mode, inspecting adapter &
 /// permission readiness, scanning peripherals, and connecting to SmartPomodoro.
@@ -86,6 +87,7 @@ class _DeviceScanSheetState extends ConsumerState<DeviceScanSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isDebug = ref.watch(debugModeProvider);
     final isMock = ref.watch(isMockBleModeProvider);
     final repo = ref.watch(bleRepositoryProvider);
     final connection =
@@ -124,14 +126,16 @@ class _DeviceScanSheetState extends ConsumerState<DeviceScanSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        '藍牙裝置與通訊模式',
+                        isDebug ? '藍牙裝置與通訊模式' : '掃描藍牙裝置',
                         style: textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '預設使用 Mock 虛擬韌體；接上 ESP32 時請切換為 Real BLE',
+                        isDebug
+                            ? '預設使用 Mock 虛擬韌體；接上 ESP32 時請切換為 Real BLE'
+                            : '搜尋並連線附近的 SmartPomodoro 實體番茄鐘',
                         style: textTheme.bodySmall?.copyWith(
                           color: AppColors.inkMuted,
                         ),
@@ -147,37 +151,43 @@ class _DeviceScanSheetState extends ConsumerState<DeviceScanSheet> {
               ],
             ),
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.border),
+            if (isDebug) ...<Widget>[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    ChoiceChip(
+                      key: const Key('btn_sheet_switch_mock'),
+                      label: const Text('Mock 虛擬韌體 (預設)'),
+                      selected: isMock,
+                      onSelected: (_) {
+                        ref
+                            .read(isMockBleModeProvider.notifier)
+                            .setMockMode(true);
+                      },
+                    ),
+                    ChoiceChip(
+                      key: const Key('btn_sheet_switch_real'),
+                      label: const Text('Real BLE 實體連線'),
+                      selected: !isMock,
+                      onSelected: (_) {
+                        ref
+                            .read(isMockBleModeProvider.notifier)
+                            .setMockMode(false);
+                      },
+                    ),
+                  ],
+                ),
               ),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: <Widget>[
-                  ChoiceChip(
-                    key: const Key('btn_sheet_switch_mock'),
-                    label: const Text('Mock 虛擬韌體 (預設)'),
-                    selected: isMock,
-                    onSelected: (_) {
-                      ref.read(isMockBleModeProvider.notifier).setMockMode(true);
-                    },
-                  ),
-                  ChoiceChip(
-                    key: const Key('btn_sheet_switch_real'),
-                    label: const Text('Real BLE 實體連線'),
-                    selected: !isMock,
-                    onSelected: (_) {
-                      ref.read(isMockBleModeProvider.notifier).setMockMode(false);
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
+            ],
             if (isMock) ...<Widget>[
               Expanded(
                 child: Container(
@@ -413,15 +423,17 @@ class _DeviceScanSheetState extends ConsumerState<DeviceScanSheet> {
                                 Text(
                                   isScanning
                                       ? '正在掃描附近 BLE 裝置...'
-                                      : '找不到 SmartPomodoro 裝置（可切換回 Mock 模式進行測試）',
+                                      : (isDebug
+                                          ? '找不到 SmartPomodoro 裝置（可切換回 Mock 模式進行測試）'
+                                          : '找不到附近的 SmartPomodoro 裝置，請確認裝置已開機並處於廣播狀態'),
                                   textAlign: TextAlign.center,
                                   style: textTheme.bodyMedium?.copyWith(
                                     color: AppColors.ink,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                const SizedBox(height: 10),
-                                if (!isScanning)
+                                if (!isScanning && isDebug) ...<Widget>[
+                                  const SizedBox(height: 10),
                                   FilledButton.tonalIcon(
                                     key: const Key('btn_empty_fallback_mock'),
                                     onPressed: () {
@@ -435,6 +447,7 @@ class _DeviceScanSheetState extends ConsumerState<DeviceScanSheet> {
                                     ),
                                     label: const Text('切回 Mock 模擬模式'),
                                   ),
+                                ],
                               ],
                             ),
                           ),

@@ -5,6 +5,7 @@ import 'package:pomodoro/app.dart';
 import 'package:pomodoro/core/logging/app_logger.dart';
 import 'package:pomodoro/data/ble/mock_ble_repository.dart';
 import 'package:pomodoro/data/ble/mock_nvs_store.dart';
+import 'package:pomodoro/data/local/preferences_store.dart';
 import 'package:pomodoro/state/ble_providers.dart';
 
 void main() {
@@ -33,6 +34,9 @@ void main() {
             ref.onDispose(mockRepo.dispose);
             return mockRepo;
           }),
+          preferencesStoreProvider.overrideWithValue(
+            InMemoryPreferencesStore(isDebugMode: true, isMockBleMode: true),
+          ),
         ],
         child: const PomodoroApp(),
       );

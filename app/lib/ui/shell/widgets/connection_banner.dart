@@ -34,6 +34,8 @@ class ConnectionBanner extends ConsumerWidget {
           : '重試中';
       headline =
           '裝置已斷線，嘗試重連中...（第 ${connection.reconnectAttempt} 次，$retryLabel）';
+    } else if (!hasTargetDevice) {
+      headline = '尚未配對 SmartPomodoro，請點擊「掃描裝置」連線';
     } else {
       headline = '裝置已斷線，嘗試重連中...';
     }

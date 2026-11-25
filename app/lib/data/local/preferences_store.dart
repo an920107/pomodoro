@@ -8,6 +8,9 @@ abstract class PreferencesStore {
   String? get lastDeviceName;
   Future<void> setLastDeviceName(String? value);
 
+  bool get isDebugMode;
+  Future<void> setDebugMode(bool value);
+
   bool get isMockBleMode;
   Future<void> setMockBleMode(bool value);
 
@@ -24,6 +27,7 @@ abstract class PreferencesStore {
 abstract final class PreferencesKeys {
   static const String lastDeviceId = 'pref_last_device_id';
   static const String lastDeviceName = 'pref_last_device_name';
+  static const String isDebugMode = 'pref_is_debug_mode';
   static const String isMockBleMode = 'pref_is_mock_ble_mode';
   static const String dndEnabled = 'pref_dnd_enabled';
   static const String appLockEnabled = 'pref_app_lock_enabled';
@@ -62,8 +66,17 @@ class SharedPreferencesStore implements PreferencesStore {
   }
 
   @override
-  bool get isMockBleMode =>
-      _prefs.getBool(PreferencesKeys.isMockBleMode) ?? true;
+  bool get isDebugMode => _prefs.getBool(PreferencesKeys.isDebugMode) ?? false;
+
+  @override
+  Future<void> setDebugMode(bool value) async {
+    await _prefs.setBool(PreferencesKeys.isDebugMode, value);
+  }
+
+  @override
+  bool get isMockBleMode => isDebugMode
+      ? (_prefs.getBool(PreferencesKeys.isMockBleMode) ?? false)
+      : false;
 
   @override
   Future<void> setMockBleMode(bool value) async {
@@ -103,7 +116,8 @@ class InMemoryPreferencesStore implements PreferencesStore {
   InMemoryPreferencesStore({
     this._lastDeviceId,
     this._lastDeviceName,
-    this._isMockBleMode = true,
+    this._isDebugMode = false,
+    this._isMockBleMode = false,
     this._dndEnabled = false,
     this._appLockEnabled = false,
     List<String> blacklistedPackages = const [],
@@ -111,6 +125,7 @@ class InMemoryPreferencesStore implements PreferencesStore {
 
   String? _lastDeviceId;
   String? _lastDeviceName;
+  bool _isDebugMode;
   bool _isMockBleMode;
   bool _dndEnabled;
   bool _appLockEnabled;
@@ -133,7 +148,15 @@ class InMemoryPreferencesStore implements PreferencesStore {
   }
 
   @override
-  bool get isMockBleMode => _isMockBleMode;
+  bool get isDebugMode => _isDebugMode;
+
+  @override
+  Future<void> setDebugMode(bool value) async {
+    _isDebugMode = value;
+  }
+
+  @override
+  bool get isMockBleMode => _isDebugMode ? _isMockBleMode : false;
 
   @override
   Future<void> setMockBleMode(bool value) async {

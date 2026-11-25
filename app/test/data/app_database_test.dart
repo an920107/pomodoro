@@ -110,11 +110,20 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final store = SharedPreferencesStore(prefs);
 
-      expect(store.isMockBleMode, isTrue);
+      expect(store.isDebugMode, isFalse);
+      expect(store.isMockBleMode, isFalse);
       expect(store.lastDeviceId, isNull);
       expect(store.dndEnabled, isFalse);
       expect(store.appLockEnabled, isFalse);
       expect(store.blacklistedPackages, isEmpty);
+
+      // Enabling Mock flag alone remains false while Debug Mode is disabled.
+      await store.setMockBleMode(true);
+      expect(store.isMockBleMode, isFalse);
+
+      await store.setDebugMode(true);
+      expect(store.isDebugMode, isTrue);
+      expect(store.isMockBleMode, isTrue);
 
       await store.setLastDeviceId('AA:BB:CC:DD:EE:FF');
       await store.setLastDeviceName('SmartPomodoro-01');
@@ -129,6 +138,12 @@ void main() {
       expect(store.dndEnabled, isTrue);
       expect(store.appLockEnabled, isTrue);
       expect(store.blacklistedPackages, <String>['com.instagram.android']);
+
+      await store.setMockBleMode(true);
+      expect(store.isMockBleMode, isTrue);
+      await store.setDebugMode(false);
+      expect(store.isDebugMode, isFalse);
+      expect(store.isMockBleMode, isFalse);
 
       await store.setLastDeviceId(null);
       expect(store.lastDeviceId, isNull);

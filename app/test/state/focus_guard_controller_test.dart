@@ -105,6 +105,8 @@ void main() {
         logger: logger,
       );
       final prefs = InMemoryPreferencesStore(
+        isDebugMode: true,
+        isMockBleMode: true,
         dndEnabled: true,
         appLockEnabled: true,
         blacklistedPackages: const <String>['com.android.settings'],

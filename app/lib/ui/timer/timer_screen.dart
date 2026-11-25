@@ -6,6 +6,8 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/protocol/protocol_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/todo_item.dart';
+import '../../state/ble_providers.dart';
+import '../../state/debug_mode_controller.dart';
 import '../../state/pomodoro_controller.dart';
 import 'mock_debug_panel.dart';
 
@@ -18,6 +20,8 @@ class TimerScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final viewState = ref.watch(pomodoroControllerProvider);
     final controller = ref.read(pomodoroControllerProvider.notifier);
+    final showMockPanel =
+        ref.watch(debugModeProvider) && ref.watch(isMockBleModeProvider);
     final status = viewState.status;
     final state = status.state;
     final textTheme = Theme.of(context).textTheme;
@@ -145,8 +149,10 @@ class TimerScreen extends ConsumerWidget {
           _BoundTodoCard(viewState: viewState),
           const SizedBox(height: 16),
           _ActionButtonsRow(viewState: viewState),
-          const SizedBox(height: 20),
-          const MockDebugPanel(),
+          if (showMockPanel) ...<Widget>[
+            const SizedBox(height: 20),
+            const MockDebugPanel(),
+          ],
         ],
       ),
     );

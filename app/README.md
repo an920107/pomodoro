@@ -18,9 +18,12 @@
   - `SqliteAppDatabase`（`pomodoro.db`）採用複合鍵 `(log_id, raw_start_epoch, duration_sec, type, result)` 去重寫入、`known_todos` 歷史名稱快照、未校時紀錄 (`start == 0`) 接收估算標記。
 - **Android 原生專注守護 (`android/.../FocusGuardService.kt`)**：
   - Foreground Service（`foregroundServiceType="specialUse"`）於 `FOCUS_RUNNING` 時開啟系統勿擾模式（並於暫停/離位/停止還原）、以 `UsageStatsManager.queryEvents` 每 500ms 偵測前景黑名單 App 並透過 `WindowManager` 顯示全螢幕鎖定遮罩，內建原生 `SystemClock.elapsedRealtime()` `(rem + 2)s` 斷線安全閥。
-- **內建除錯工具**：
+- **一般使用模式 vs 開發者除錯模式 (`DebugModeController`)**：
+  - 首次啟動預設為 **一般使用模式**（隱藏 Mock 模擬面板、自檢與封包監看器，僅呈現真實 BLE 連線介面與專注流程）。
+  - 連續點擊底部導覽列「**設定**」分頁 **5 次**（3 秒內）即可開啟 `DebugModeSheet`（開發者除錯模式選單），即時啟用 `Mock 虛擬韌體模擬器`、`BLE 封包即時監看器`、`通訊與虛擬韌體自檢` 或重置模擬 NVS；關閉 Debug Mode 時會自動切回真實藍牙模式。
+- **內建除錯工具（Debug 模式可見）**：
   - 計時頁 `Mock 虛擬韌體模擬器`：無硬體即可模擬離位／回座、快轉剩 5 秒／已過 65 秒、斷線重連、注入未校時紀錄、斷電重啟。
-  - 設定頁 `BLE 封包即時監看器` (`PacketInspectorScreen`)：免接電腦即時檢視 `[BLE-TX]` / `[BLE-RX]` / `[SYNC]` / `[GUARD]` / `[APP]` 日誌，支援標籤篩選、排序切換、複製與清除。
+  - 設定頁 `BLE 封包即時監看器` (`PacketInspectorScreen`)：免接電腦即時檢視與篩選 `[BLE-TX]` / `[BLE-RX]` / `[SYNC]` / `[GUARD]` / `[APP]` 日誌，支援標籤篩選、排序切換、複製與清除。
 
 ---
 

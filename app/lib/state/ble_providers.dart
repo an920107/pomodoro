@@ -13,6 +13,7 @@ import '../data/local/app_database.dart';
 import '../data/local/preferences_store.dart';
 import '../data/models/device_status.dart';
 import 'config_controller.dart';
+import 'debug_mode_controller.dart';
 import 'history_controller.dart';
 import 'pomodoro_controller.dart';
 import 'todo_controller.dart';
@@ -42,12 +43,19 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
 /// Ring-buffer logger provider consumed by [PacketInspectorScreen].
 final appLoggerProvider = Provider<AppLogger>((ref) => AppLogger.instance);
 
-/// Controls whether the app uses [MockBleRepository] (default in Phase 1).
+/// Controls whether the app uses [MockBleRepository] (available only in Debug Mode).
 class BleModeNotifier extends Notifier<bool> {
   @override
-  bool build() => ref.watch(preferencesStoreProvider).isMockBleMode;
+  bool build() {
+    final isDebug = ref.watch(debugModeProvider);
+    if (!isDebug) return false;
+    return ref.watch(preferencesStoreProvider).isMockBleMode;
+  }
 
   void setMockMode(bool isMock) {
+    if (isMock && !ref.read(debugModeProvider)) {
+      return;
+    }
     final wasMock = state;
     if (wasMock == isMock) return;
     if (isMock && !wasMock) {

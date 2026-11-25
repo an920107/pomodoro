@@ -3,8 +3,9 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../state/ble_providers.dart';
+import '../../state/debug_mode_controller.dart';
 
-/// Collapsible hardware simulator visible only when running in Mock BLE mode.
+/// Collapsible hardware simulator visible only in Debug + Mock BLE mode.
 /// Lets developers trigger proximity, fast-forward, disconnect, and power-cycle
 /// scenarios directly on a single Android phone without an ESP32 board.
 class MockDebugPanel extends ConsumerStatefulWidget {
@@ -19,8 +20,9 @@ class _MockDebugPanelState extends ConsumerState<MockDebugPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final isDebug = ref.watch(debugModeProvider);
     final isMock = ref.watch(isMockBleModeProvider);
-    if (!isMock) {
+    if (!isDebug || !isMock) {
       return const SizedBox.shrink();
     }
 

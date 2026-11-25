@@ -2,11 +2,22 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pomodoro/app.dart';
+import 'package:pomodoro/data/local/preferences_store.dart';
+import 'package:pomodoro/state/ble_providers.dart';
 
 void main() {
   testWidgets('renders 4-tab shell and switches between tabs cleanly',
       (WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: PomodoroApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          preferencesStoreProvider.overrideWithValue(
+            InMemoryPreferencesStore(isDebugMode: true, isMockBleMode: true),
+          ),
+        ],
+        child: const PomodoroApp(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('screen_timer')), findsOneWidget);
