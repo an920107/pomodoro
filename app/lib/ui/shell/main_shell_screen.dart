@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/logging/app_logger.dart';
+import '../../core/protocol/mock_ble_self_check.dart';
 import '../../core/protocol/protocol_self_check.dart';
 import '../../core/theme/app_theme.dart';
+import '../../state/ble_providers.dart';
 
 /// Top-level navigation tabs for the Phase 1 application shell.
 enum AppTab {
@@ -147,11 +149,18 @@ class MainShellScreen extends ConsumerWidget {
   }
 }
 
-class _ModeBadge extends StatelessWidget {
+class _ModeBadge extends ConsumerWidget {
   const _ModeBadge();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connection = ref.watch(bleConnectionProvider).asData?.value;
+    final isConnected = connection?.state.isConnected ?? false;
+    final isMock = ref.watch(isMockBleModeProvider);
+    final label = isMock
+        ? (isConnected ? 'Mock 已連線' : 'Mock ${connection?.state.label ?? '待機'}')
+        : (connection?.state.label ?? 'BLE 未連線');
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -165,14 +174,14 @@ class _ModeBadge extends StatelessWidget {
           Container(
             width: 8,
             height: 8,
-            decoration: const BoxDecoration(
-              color: AppColors.signalWarn,
+            decoration: BoxDecoration(
+              color: isConnected ? AppColors.signalBreak : AppColors.signalWarn,
               shape: BoxShape.circle,
             ),
           ),
           const SizedBox(width: 6),
           Text(
-            '協定 v1.2 就緒',
+            label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: AppColors.ink,
                 ),
@@ -296,6 +305,9 @@ class _ProtocolSelfCheckCardState extends State<_ProtocolSelfCheckCard> {
   bool _running = false;
   String? _result;
   bool _hasError = false;
+  bool _mockRunning = false;
+  String? _mockResult;
+  bool _mockHasError = false;
 
   Future<void> _runCheck() async {
     if (_running) return;
@@ -325,6 +337,34 @@ class _ProtocolSelfCheckCardState extends State<_ProtocolSelfCheckCard> {
     }
   }
 
+  Future<void> _runMockCheck() async {
+    if (_mockRunning) return;
+    setState(() {
+      _mockRunning = true;
+      _mockHasError = false;
+    });
+    try {
+      final summary = await runMockBleSelfCheck();
+      if (!mounted) return;
+      setState(() {
+        _mockResult = summary;
+        _mockHasError = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _mockResult = 'Mock 自檢失敗：$e';
+        _mockHasError = true;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _mockRunning = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -341,7 +381,7 @@ class _ProtocolSelfCheckCardState extends State<_ProtocolSelfCheckCard> {
             ),
             const SizedBox(height: 6),
             Text(
-              '驗證 ASCII/120B 封包格式、Model 解析與序列 RPC 佇列（輸出 [BLE-TX] / [BLE-RX] 至 logcat）。',
+              '驗證 ASCII/120B 封包格式、Model 解析、序列 RPC 佇列與 Mock 虛擬韌體閉環。',
               style: textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
@@ -356,32 +396,64 @@ class _ProtocolSelfCheckCardState extends State<_ProtocolSelfCheckCard> {
             ),
             if (_result != null) ...<Widget>[
               const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceRecessed,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: _hasError
-                        ? AppColors.signalFocus
-                        : AppColors.signalBreak,
-                  ),
-                ),
-                child: Text(
-                  _result!,
-                  key: const Key('txt_protocol_self_check_result'),
-                  style: textTheme.bodyMedium?.copyWith(
-                    color: _hasError
-                        ? AppColors.signalFocus
-                        : AppColors.signalBreak,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              _SelfCheckBanner(
+                key: const Key('txt_protocol_self_check_result'),
+                text: _result!,
+                hasError: _hasError,
+              ),
+            ],
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('btn_mock_ble_self_check'),
+                onPressed: _mockRunning ? null : _runMockCheck,
+                icon: const Icon(Icons.memory_outlined, size: 18),
+                label: Text(_mockRunning ? '執行中...' : '執行 Mock 虛擬韌體閉環自檢'),
+              ),
+            ),
+            if (_mockResult != null) ...<Widget>[
+              const SizedBox(height: 12),
+              _SelfCheckBanner(
+                key: const Key('txt_mock_ble_self_check_result'),
+                text: _mockResult!,
+                hasError: _mockHasError,
               ),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SelfCheckBanner extends StatelessWidget {
+  const _SelfCheckBanner({
+    super.key,
+    required this.text,
+    required this.hasError,
+  });
+
+  final String text;
+  final bool hasError;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = hasError ? AppColors.signalFocus : AppColors.signalBreak;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceRecessed,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: accent),
+      ),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: accent,
+              fontWeight: FontWeight.w600,
+            ),
       ),
     );
   }

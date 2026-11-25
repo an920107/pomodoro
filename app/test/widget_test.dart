@@ -30,5 +30,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('txt_protocol_self_check_result')), findsOneWidget);
     expect(find.textContaining('通過：'), findsOneWidget);
+
+    await tester.ensureVisible(find.byKey(const Key('btn_mock_ble_self_check')));
+    await tester.tap(find.byKey(const Key('btn_mock_ble_self_check')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('txt_mock_ble_self_check_result')), findsOneWidget);
   });
 }
