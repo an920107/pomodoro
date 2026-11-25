@@ -218,6 +218,17 @@ class MockBleRepository extends BaseBleRepository {
     _emitStatusIfConnected();
   }
 
+  /// Fast-forwards the active countdown so [elapsedSeconds] have elapsed
+  /// while keeping at least 1 second remaining so the session stays active.
+  void fastForwardElapsed(int elapsedSeconds) {
+    _ensureNotDisposed();
+    if (!_state.isFocus && !_state.isBreak) return;
+    if (_totalSeconds <= 0) return;
+    final clampedElapsed = elapsedSeconds.clamp(0, _totalSeconds - 1);
+    _remainingSeconds = _totalSeconds - clampedElapsed;
+    _emitStatusIfConnected();
+  }
+
   /// Drops the BLE link while keeping the virtual ESP32 countdown running
   /// offline in the background (`spec.md` §4.1.1).
   void simulateDisconnect({

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/logging/app_logger.dart';
 import '../data/ble/ble_client_adapter.dart';
 import '../data/ble/ble_repository.dart';
 import '../data/ble/handshake_coordinator.dart';
@@ -37,6 +38,9 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
   });
   return db;
 });
+
+/// Ring-buffer logger provider consumed by [PacketInspectorScreen].
+final appLoggerProvider = Provider<AppLogger>((ref) => AppLogger.instance);
 
 /// Controls whether the app uses [MockBleRepository] (default in Phase 1).
 class BleModeNotifier extends Notifier<bool> {

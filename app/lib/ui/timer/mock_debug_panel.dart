@@ -100,6 +100,12 @@ class _MockDebugPanelState extends ConsumerState<MockDebugPanel> {
                         onPressed: () => mockRepo.simulateAway(false),
                       ),
                       _SimActionButton(
+                        key: const Key('mock_btn_elapsed_65s'),
+                        label: '快轉已過 65 秒',
+                        icon: Icons.timelapse_rounded,
+                        onPressed: () => mockRepo.fastForwardElapsed(65),
+                      ),
+                      _SimActionButton(
                         key: const Key('mock_btn_ff_5s'),
                         label: '快轉剩 5 秒',
                         icon: Icons.fast_forward_rounded,

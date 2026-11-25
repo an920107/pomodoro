@@ -383,6 +383,51 @@ class _ActionButtonsRow extends ConsumerWidget {
 
   final PomodoroViewState viewState;
 
+  Future<void> _handleStopFocus(
+    BuildContext context,
+    PomodoroController controller,
+  ) async {
+    final total = viewState.status.totalSeconds;
+    final remaining = viewState.status.remainingSeconds;
+    final elapsed = total > 0 ? (total - remaining).clamp(0, total) : 0;
+    if (elapsed < BleProtocolConstants.minAbortLogSeconds) {
+      await controller.stop();
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          key: const Key('dialog_stop_confirm'),
+          title: const Text('是否確認中止（將記錄為未完成專注）'),
+          content: Text(
+            '本次專注已進行 ${formatMmSs(elapsed)}（超過 60 秒）。若現在中止，將寫入一筆「中途停止 (ABORTED)」專注紀錄。',
+          ),
+          actions: <Widget>[
+            TextButton(
+              key: const Key('btn_cancel_stop_focus'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('繼續專注'),
+            ),
+            FilledButton(
+              key: const Key('btn_confirm_stop_focus'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.signalFocus,
+                foregroundColor: AppColors.surface,
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('確認中止'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed == true) {
+      await controller.stop();
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(pomodoroControllerProvider.notifier);
@@ -442,7 +487,7 @@ class _ActionButtonsRow extends ConsumerWidget {
             Expanded(
               child: OutlinedButton.icon(
                 key: const Key('btn_stop'),
-                onPressed: locked ? null : controller.stop,
+                onPressed: locked ? null : () => _handleStopFocus(context, controller),
                 icon: const Icon(Icons.stop_rounded),
                 label: const Text('停止'),
                 style: OutlinedButton.styleFrom(
@@ -473,7 +518,7 @@ class _ActionButtonsRow extends ConsumerWidget {
             Expanded(
               child: OutlinedButton.icon(
                 key: const Key('btn_stop'),
-                onPressed: locked ? null : controller.stop,
+                onPressed: locked ? null : () => _handleStopFocus(context, controller),
                 icon: const Icon(Icons.stop_rounded),
                 label: const Text('停止'),
                 style: OutlinedButton.styleFrom(
@@ -490,7 +535,7 @@ class _ActionButtonsRow extends ConsumerWidget {
           width: double.infinity,
           child: OutlinedButton.icon(
             key: const Key('btn_stop'),
-            onPressed: locked ? null : controller.stop,
+            onPressed: locked ? null : () => _handleStopFocus(context, controller),
             icon: const Icon(Icons.stop_rounded),
             label: const Text('停止'),
             style: OutlinedButton.styleFrom(
