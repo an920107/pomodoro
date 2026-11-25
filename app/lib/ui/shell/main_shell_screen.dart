@@ -2,11 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/logging/app_logger.dart';
-import '../../core/protocol/mock_ble_self_check.dart';
-import '../../core/protocol/protocol_self_check.dart';
 import '../../core/theme/app_theme.dart';
 import '../../state/ble_providers.dart';
+import '../settings/settings_screen.dart';
 import '../timer/timer_screen.dart';
+import '../todos/todos_screen.dart';
 import 'widgets/connection_banner.dart';
 
 /// Top-level navigation tabs for the Phase 1 application shell.
@@ -16,7 +16,7 @@ enum AppTab {
     headline: '專注計時控制',
     summary: '顯示裝置回報的即時狀態與倒數秒數，並發送開始、暫停、恢復與停止指令。',
     specSection: 'BLE Status (...5602) 與 RPC 控制 (cmd 11~15)',
-    nextStep: '將於 Commit 2~4 接上協定佇列、Mock 模擬器與 6 態控制介面。',
+    nextStep: '已於 Commit 4 接上即時狀態機與控制介面。',
     accentColor: AppColors.signalFocus,
   ),
   todos(
@@ -24,7 +24,7 @@ enum AppTab {
     headline: '待辦事項清單',
     summary: '管理儲存在裝置 NVS 中的待辦事項，支援純 ASCII 標題、完成標記與拖曳排序。',
     specSection: '待辦操作指令 (cmd 200~205，上限 10 筆)',
-    nextStep: '將於 Commit 5 實作新增、編輯、刪除與相鄰交換排序。',
+    nextStep: '已於 Commit 5 實作新增、編輯、刪除與相鄰交換排序。',
     accentColor: AppColors.ink,
   ),
   stats(
@@ -40,7 +40,7 @@ enum AppTab {
     headline: '裝置參數與專注防護',
     summary: '調整專注與休息時長、提示音與離位感測參數，並管理 Android 勿擾與應用程式鎖定。',
     specSection: '裝置設定 (cmd 100~101) 與 FocusGuard 原生服務',
-    nextStep: '將於 Commit 5、7、8 陸續接上參數設定、真實藍牙與原生守護服務。',
+    nextStep: '將於 Commit 7、8 接上真實藍牙與原生守護服務。',
     accentColor: AppColors.signalWarn,
   );
 
@@ -104,15 +104,19 @@ class MainShellScreen extends ConsumerWidget {
           children: <Widget>[
             const ConnectionBanner(),
             Expanded(
-              child: activeTab == AppTab.timer
-                  ? const TimerScreen(key: Key('screen_timer'))
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(20),
-                      child: _TabPlaceholderPanel(
-                        key: Key('screen_${activeTab.name}'),
-                        tab: activeTab,
-                      ),
+              child: switch (activeTab) {
+                AppTab.timer => const TimerScreen(key: Key('screen_timer')),
+                AppTab.todos => const TodosScreen(key: Key('screen_todos')),
+                AppTab.stats => SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: _TabPlaceholderPanel(
+                      key: Key('screen_${activeTab.name}'),
+                      tab: activeTab,
                     ),
+                  ),
+                AppTab.settings =>
+                  const SettingsScreen(key: Key('screen_settings')),
+              },
             ),
           ],
         ),
@@ -272,200 +276,7 @@ class _TabPlaceholderPanel extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        if (tab == AppTab.settings) ...<Widget>[
-          const _ProtocolSelfCheckCard(),
-          const SizedBox(height: 16),
-        ],
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceRecessed,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                '等待後續模組接線',
-                style: textTheme.titleMedium,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '此畫面為導覽基線，v1.2 協定模型與序列 RPC 佇列已就緒；待後續 Commit 接上模擬韌體串流與介面控制。',
-                style: textTheme.bodyMedium,
-              ),
-            ],
-          ),
-        ),
       ],
-    );
-  }
-}
-
-class _ProtocolSelfCheckCard extends StatefulWidget {
-  const _ProtocolSelfCheckCard();
-
-  @override
-  State<_ProtocolSelfCheckCard> createState() => _ProtocolSelfCheckCardState();
-}
-
-class _ProtocolSelfCheckCardState extends State<_ProtocolSelfCheckCard> {
-  bool _running = false;
-  String? _result;
-  bool _hasError = false;
-  bool _mockRunning = false;
-  String? _mockResult;
-  bool _mockHasError = false;
-
-  Future<void> _runCheck() async {
-    if (_running) return;
-    setState(() {
-      _running = true;
-      _hasError = false;
-    });
-    try {
-      final summary = await runProtocolSelfCheck();
-      if (!mounted) return;
-      setState(() {
-        _result = summary;
-        _hasError = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _result = '自檢失敗：$e';
-        _hasError = true;
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _running = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _runMockCheck() async {
-    if (_mockRunning) return;
-    setState(() {
-      _mockRunning = true;
-      _mockHasError = false;
-    });
-    try {
-      final summary = await runMockBleSelfCheck();
-      if (!mounted) return;
-      setState(() {
-        _mockResult = summary;
-        _mockHasError = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _mockResult = 'Mock 自檢失敗：$e';
-        _mockHasError = true;
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _mockRunning = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              '協定層實機診斷',
-              style: textTheme.titleMedium,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '驗證 ASCII/120B 封包格式、Model 解析、序列 RPC 佇列與 Mock 虛擬韌體閉環。',
-              style: textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                key: const Key('btn_protocol_self_check'),
-                onPressed: _running ? null : _runCheck,
-                icon: const Icon(Icons.verified_outlined, size: 18),
-                label: Text(_running ? '執行中...' : '執行 v1.2 協定與佇列實機自檢'),
-              ),
-            ),
-            if (_result != null) ...<Widget>[
-              const SizedBox(height: 12),
-              _SelfCheckBanner(
-                key: const Key('txt_protocol_self_check_result'),
-                text: _result!,
-                hasError: _hasError,
-              ),
-            ],
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                key: const Key('btn_mock_ble_self_check'),
-                onPressed: _mockRunning ? null : _runMockCheck,
-                icon: const Icon(Icons.memory_outlined, size: 18),
-                label: Text(_mockRunning ? '執行中...' : '執行 Mock 虛擬韌體閉環自檢'),
-              ),
-            ),
-            if (_mockResult != null) ...<Widget>[
-              const SizedBox(height: 12),
-              _SelfCheckBanner(
-                key: const Key('txt_mock_ble_self_check_result'),
-                text: _mockResult!,
-                hasError: _mockHasError,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SelfCheckBanner extends StatelessWidget {
-  const _SelfCheckBanner({
-    super.key,
-    required this.text,
-    required this.hasError,
-  });
-
-  final String text;
-  final bool hasError;
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = hasError ? AppColors.signalFocus : AppColors.signalBreak;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceRecessed,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: accent),
-      ),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: accent,
-              fontWeight: FontWeight.w600,
-            ),
-      ),
     );
   }
 }

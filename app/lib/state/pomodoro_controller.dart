@@ -11,6 +11,8 @@ import '../data/models/device_config.dart';
 import '../data/models/device_status.dart';
 import '../data/models/todo_item.dart';
 import 'ble_providers.dart';
+import 'config_controller.dart';
+import 'todo_controller.dart';
 
 /// Immutable UI snapshot combining BLE link state, ESP32 device status,
 /// cached settings, bindable To-Dos, and the disconnect safety valve timer.
@@ -135,6 +137,8 @@ class PomodoroController extends Notifier<PomodoroViewState> {
   PomodoroViewState build() {
     _disposed = false;
     final repo = ref.watch(bleRepositoryProvider);
+    final initialTodos = ref.read(todoControllerProvider);
+    final initialConfig = ref.read(configControllerProvider);
     _lastConnectionState = repo.currentConnection.state;
 
     _connectionSub?.cancel();
@@ -143,6 +147,24 @@ class PomodoroController extends Notifier<PomodoroViewState> {
 
     _connectionSub = repo.connectionStream.listen(_onConnectionChanged);
     _statusSub = repo.statusStream.listen(_onStatusReceived);
+
+    ref.listen<TodoListState>(todoControllerProvider, (_, next) {
+      if (_disposed) return;
+      var nextSelected = state.selectedTodoId;
+      if (nextSelected != BleProtocolConstants.unboundTodoId &&
+          !next.items.any((t) => t.id == nextSelected)) {
+        nextSelected = BleProtocolConstants.unboundTodoId;
+      }
+      state = state.copyWith(
+        todos: next.items,
+        selectedTodoId: nextSelected,
+      );
+    });
+
+    ref.listen<ConfigState>(configControllerProvider, (_, next) {
+      if (_disposed) return;
+      state = state.copyWith(config: next.config);
+    });
 
     ref.onDispose(() {
       _disposed = true;
@@ -153,12 +175,14 @@ class PomodoroController extends Notifier<PomodoroViewState> {
     });
 
     if (_lastConnectionState.isConnected) {
-      Future<void>.microtask(refreshSnapshot);
+      Future<void>.microtask(_refreshStatusOnly);
     }
 
     return PomodoroViewState(
       connection: repo.currentConnection,
       status: repo.latestStatus ?? const DeviceStatus.initial(),
+      config: initialConfig.config,
+      todos: initialTodos.items,
     );
   }
 
@@ -172,38 +196,28 @@ class PomodoroController extends Notifier<PomodoroViewState> {
     state = state.copyWith(clearError: true);
   }
 
-  Future<void> refreshSnapshot() async {
+  Future<void> _refreshStatusOnly() async {
     if (_disposed) return;
     final repo = ref.read(bleRepositoryProvider);
     if (!repo.currentConnection.state.isConnected) return;
 
     try {
       final status = await repo.readStatus();
-      final config = await repo.getConfig();
-      final meta = await repo.getTodoLength();
-      final todos = <TodoItem>[];
-      for (var i = 0; i < meta.length; i++) {
-        todos.add(await repo.getTodoItem(i));
-      }
       if (_disposed) return;
-
-      var nextSelected = state.selectedTodoId;
-      if (nextSelected != BleProtocolConstants.unboundTodoId &&
-          !todos.any((t) => t.id == nextSelected)) {
-        nextSelected = BleProtocolConstants.unboundTodoId;
-      }
-
-      state = state.copyWith(
-        status: status,
-        config: config,
-        todos: List<TodoItem>.unmodifiable(todos),
-        selectedTodoId: nextSelected,
-        clearError: true,
-      );
+      state = state.copyWith(status: status, clearError: true);
     } on PomodoroProtocolException catch (e) {
       if (_disposed) return;
       state = state.copyWith(errorMessage: e.message);
     }
+  }
+
+  Future<void> refreshSnapshot() async {
+    await _refreshStatusOnly();
+    if (_disposed) return;
+    await Future.wait(<Future<void>>[
+      ref.read(configControllerProvider.notifier).loadConfig(),
+      ref.read(todoControllerProvider.notifier).loadTodos(),
+    ]);
   }
 
   Future<void> startFocus() => _runControl((repo) {
@@ -284,7 +298,7 @@ class PomodoroController extends Notifier<PomodoroViewState> {
         safetyValveTripped: false,
         clearError: true,
       );
-      unawaited(refreshSnapshot());
+      unawaited(_refreshStatusOnly());
       return;
     }
 
