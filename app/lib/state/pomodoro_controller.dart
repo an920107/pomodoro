@@ -236,9 +236,18 @@ class PomodoroController extends Notifier<PomodoroViewState> {
 
   Future<void> reconnectNow() async {
     if (_disposed) return;
+    final isMock = ref.read(isMockBleModeProvider);
     final repo = ref.read(bleRepositoryProvider);
-    final deviceId =
-        state.connection.device?.id ?? MockBleRepository.mockDevice.id;
+    final deviceId = isMock
+        ? (state.connection.device?.id ?? MockBleRepository.mockDevice.id)
+        : (state.connection.device?.id ??
+              ref.read(preferencesStoreProvider).lastDeviceId);
+    if (deviceId == null || deviceId.isEmpty) {
+      state = state.copyWith(
+        errorMessage: '尚未配對裝置，請點擊「掃描裝置」搜尋 SmartPomodoro',
+      );
+      return;
+    }
     try {
       await repo.connect(deviceId);
     } on PomodoroProtocolException catch (e) {

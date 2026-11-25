@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/theme/app_theme.dart';
 import '../../state/ble_providers.dart';
+import '../connection/device_scan_sheet.dart';
 import '../settings/settings_screen.dart';
 import '../stats/stats_screen.dart';
 import '../timer/timer_screen.dart';
@@ -127,37 +128,49 @@ class _ModeBadge extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final connection = ref.watch(bleConnectionProvider).asData?.value;
     final isConnected = connection?.state.isConnected ?? false;
+    final isAdapterOn = connection?.isBluetoothAdapterOn ?? true;
     final isMock = ref.watch(isMockBleModeProvider);
     final label = isMock
         ? (isConnected ? 'Mock 已連線' : 'Mock ${connection?.state.label ?? '待機'}')
-        : (connection?.state.label ?? 'BLE 未連線');
+        : (!isAdapterOn
+            ? '藍牙未開啟'
+            : (isConnected
+                ? 'BLE 已連線'
+                : 'BLE ${connection?.state.label ?? '未連線'}'));
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceRecessed,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: isConnected ? AppColors.signalBreak : AppColors.signalWarn,
-              shape: BoxShape.circle,
+    return InkWell(
+      key: const Key('btn_appbar_connection'),
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => DeviceScanSheet.show(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceRecessed,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: isConnected
+                    ? AppColors.signalBreak
+                    : (!isAdapterOn ? AppColors.signalFocus : AppColors.signalWarn),
+                shape: BoxShape.circle,
+              ),
             ),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppColors.ink,
-                ),
-          ),
-        ],
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: AppColors.ink,
+                  ),
+            ),
+          ],
+        ),
       ),
     );
   }

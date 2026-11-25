@@ -6,7 +6,9 @@ import '../../core/protocol/protocol_constants.dart';
 import '../../core/protocol/protocol_self_check.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/device_config.dart';
+import '../../state/ble_providers.dart';
 import '../../state/config_controller.dart';
+import '../connection/device_scan_sheet.dart';
 
 /// Phase 1 device configuration screen (`CMD_CFG_GET 100` / `CMD_CFG_SET 101`).
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -161,6 +163,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
 
     final configState = ref.watch(configControllerProvider);
+    final isMock = ref.watch(isMockBleModeProvider);
     final locked = configState.isLocked;
     final textTheme = Theme.of(context).textTheme;
 
@@ -169,6 +172,72 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
+          Card(
+            key: const Key('card_ble_mode_settings'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          '通訊模式與藍牙裝置',
+                          style: textTheme.titleMedium,
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        key: const Key('btn_open_scan_sheet'),
+                        onPressed: () => DeviceScanSheet.show(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        icon: const Icon(
+                          Icons.bluetooth_searching_rounded,
+                          size: 16,
+                        ),
+                        label: const Text('掃描裝置'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: <Widget>[
+                      ChoiceChip(
+                        key: const Key('chip_ble_mode_mock'),
+                        label: const Text('Mock 虛擬韌體 (預設)'),
+                        selected: isMock,
+                        onSelected: (_) {
+                          ref
+                              .read(isMockBleModeProvider.notifier)
+                              .setMockMode(true);
+                        },
+                      ),
+                      ChoiceChip(
+                        key: const Key('chip_ble_mode_real'),
+                        label: const Text('Real BLE 實體連線'),
+                        selected: !isMock,
+                        onSelected: (_) {
+                          ref
+                              .read(isMockBleModeProvider.notifier)
+                              .setMockMode(false);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           if (configState.errorMessage != null) ...<Widget>[
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

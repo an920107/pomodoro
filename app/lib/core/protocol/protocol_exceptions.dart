@@ -51,3 +51,8 @@ class BleTimeoutException extends PomodoroProtocolException {
 class BleDisconnectedException extends PomodoroProtocolException {
   const BleDisconnectedException([super.message = '裝置已斷線']);
 }
+
+/// Thrown when BLE adapter, permissions, scan, or GATT service discovery fails.
+class BleConnectionException extends PomodoroProtocolException {
+  const BleConnectionException(super.message);
+}

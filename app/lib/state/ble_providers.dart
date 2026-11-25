@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/ble/ble_client_adapter.dart';
 import '../data/ble/ble_repository.dart';
 import '../data/ble/handshake_coordinator.dart';
 import '../data/ble/mock_ble_repository.dart';
 import '../data/ble/mock_nvs_store.dart';
+import '../data/ble/real_ble_repository.dart';
 import '../data/local/app_database.dart';
 import '../data/local/preferences_store.dart';
 import '../data/models/device_status.dart';
@@ -42,6 +44,13 @@ class BleModeNotifier extends Notifier<bool> {
   bool build() => ref.watch(preferencesStoreProvider).isMockBleMode;
 
   void setMockMode(bool isMock) {
+    final wasMock = state;
+    if (wasMock == isMock) return;
+    if (isMock && !wasMock) {
+      final realRepo = ref.read(realBleRepositoryProvider);
+      unawaited(realRepo.stopScan());
+      unawaited(realRepo.disconnect());
+    }
     state = isMock;
     unawaited(ref.read(preferencesStoreProvider).setMockBleMode(isMock));
   }
@@ -59,10 +68,41 @@ final mockBleRepositoryProvider = Provider<MockBleRepository>((ref) {
   return repo;
 });
 
+/// Platform BLE adapter abstracted for deterministic testing of [RealBleRepository].
+final bleClientAdapterProvider = Provider<BleClientAdapter>((ref) {
+  final adapter = FlutterBluePlusClientAdapter();
+  ref.onDispose(adapter.dispose);
+  return adapter;
+});
+
+/// Real BLE repository driven by `flutter_blue_plus` when Mock mode is off.
+final realBleRepositoryProvider = Provider<RealBleRepository>((ref) {
+  final adapter = ref.watch(bleClientAdapterProvider);
+  final prefs = ref.watch(preferencesStoreProvider);
+  final repo = RealBleRepository(adapter: adapter, preferences: prefs);
+  ref.onDispose(repo.dispose);
+  return repo;
+});
+
 /// Active [BleRepository] implementation consumed by controllers and UI.
 final bleRepositoryProvider = Provider<BleRepository>((ref) {
-  ref.watch(isMockBleModeProvider);
-  return ref.watch(mockBleRepositoryProvider);
+  final isMock = ref.watch(isMockBleModeProvider);
+  if (isMock) {
+    return ref.watch(mockBleRepositoryProvider);
+  }
+  return ref.watch(realBleRepositoryProvider);
+});
+
+/// Live BLE scan results emitted by the active [BleRepository].
+final bleScanResultsProvider = StreamProvider<List<BleDeviceItem>>((ref) {
+  final repo = ref.watch(bleRepositoryProvider);
+  if (repo is RealBleRepository) {
+    return (() async* {
+      yield repo.latestFilteredScanResults;
+      yield* repo.scanResultsStream;
+    })();
+  }
+  return repo.scanResultsStream;
 });
 
 /// Live BLE connection stream seeded immediately with [BleRepository.currentConnection].

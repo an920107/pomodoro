@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../state/ble_providers.dart';
 import '../../../state/pomodoro_controller.dart';
+import '../../connection/device_scan_sheet.dart';
 
 /// Top status banner shown whenever the BLE connection is interrupted,
 /// displaying reconnect status and safety-valve countdown (`spec.md` §4.1.2).
@@ -16,7 +18,11 @@ class ConnectionBanner extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
+    final isMock = ref.watch(isMockBleModeProvider);
+    final savedDeviceId = ref.watch(preferencesStoreProvider).lastDeviceId;
     final connection = viewState.connection;
+    final hasTargetDevice =
+        isMock || ((connection.device?.id ?? savedDeviceId)?.isNotEmpty ?? false);
     final textTheme = Theme.of(context).textTheme;
 
     final String headline;
@@ -87,24 +93,47 @@ class ConnectionBanner extends ConsumerWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                ] else if (connection.errorMessage != null &&
+                    connection.isBluetoothAdapterOn) ...<Widget>[
+                  const SizedBox(height: 2),
+                  Text(
+                    connection.errorMessage!,
+                    style: textTheme.bodySmall?.copyWith(
+                      color: AppColors.inkMuted,
+                    ),
+                  ),
                 ],
               ],
             ),
           ),
           const SizedBox(width: 8),
-          TextButton(
-            key: const Key('btn_banner_reconnect'),
-            onPressed: () {
-              ref.read(pomodoroControllerProvider.notifier).reconnectNow();
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.ink,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          if (!isMock) ...<Widget>[
+            TextButton(
+              key: const Key('btn_banner_scan'),
+              onPressed: () => DeviceScanSheet.show(context),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.ink,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('掃描裝置'),
             ),
-            child: const Text('立即重連'),
-          ),
+          ],
+          if (connection.isBluetoothAdapterOn && hasTargetDevice)
+            TextButton(
+              key: const Key('btn_banner_reconnect'),
+              onPressed: () {
+                ref.read(pomodoroControllerProvider.notifier).reconnectNow();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.ink,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('立即重連'),
+            ),
         ],
       ),
     );
