@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/theme/app_theme.dart';
 import '../../state/ble_providers.dart';
+import '../../state/focus_guard_controller.dart';
 import '../connection/device_scan_sheet.dart';
 import '../settings/settings_screen.dart';
 import '../stats/stats_screen.dart';
@@ -46,6 +47,7 @@ class MainShellScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(handshakeCoordinatorProvider);
+    ref.watch(focusGuardControllerProvider);
     final activeTab = ref.watch(selectedTabProvider);
 
     return Scaffold(

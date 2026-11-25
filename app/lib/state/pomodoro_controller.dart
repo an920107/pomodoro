@@ -155,6 +155,10 @@ class PomodoroController extends Notifier<PomodoroViewState> {
           !next.items.any((t) => t.id == nextSelected)) {
         nextSelected = BleProtocolConstants.unboundTodoId;
       }
+      if (identical(state.todos, next.items) &&
+          nextSelected == state.selectedTodoId) {
+        return;
+      }
       state = state.copyWith(
         todos: next.items,
         selectedTodoId: nextSelected,
@@ -163,6 +167,7 @@ class PomodoroController extends Notifier<PomodoroViewState> {
 
     ref.listen<ConfigState>(configControllerProvider, (_, next) {
       if (_disposed) return;
+      if (state.config == next.config) return;
       state = state.copyWith(config: next.config);
     });
 

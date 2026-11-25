@@ -7,7 +7,9 @@ import 'core/logging/app_logger.dart';
 import 'data/ble/mock_nvs_store.dart';
 import 'data/local/app_database.dart';
 import 'data/local/preferences_store.dart';
+import 'data/native/focus_guard_service.dart';
 import 'state/ble_providers.dart';
+import 'state/focus_guard_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +26,9 @@ Future<void> main() async {
           SharedPreferencesStore(prefs),
         ),
         appDatabaseProvider.overrideWithValue(database),
+        focusGuardServiceProvider.overrideWithValue(
+          MethodChannelFocusGuardService(),
+        ),
       ],
       child: const PomodoroApp(),
     ),

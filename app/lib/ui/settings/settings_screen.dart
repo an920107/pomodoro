@@ -9,6 +9,7 @@ import '../../data/models/device_config.dart';
 import '../../state/ble_providers.dart';
 import '../../state/config_controller.dart';
 import '../connection/device_scan_sheet.dart';
+import 'focus_guard_screen.dart';
 
 /// Phase 1 device configuration screen (`CMD_CFG_GET 100` / `CMD_CFG_SET 101`).
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -529,7 +530,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          Card(
+            key: const Key('card_focus_guard_entry'),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: <Widget>[
+                  const Icon(
+                    Icons.shield_outlined,
+                    size: 24,
+                    color: AppColors.signalFocus,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text('專注守護（勿擾與 App 鎖定）', style: textTheme.titleMedium),
+                        const SizedBox(height: 2),
+                        Text(
+                          '管理系統權限與專注期間封鎖的應用程式',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: AppColors.inkMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    key: const Key('btn_open_focus_guard'),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const FocusGuardScreen(),
+                        ),
+                      );
+                    },
+                    child: const Text('設定權限與黑名單'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           Container(
             decoration: BoxDecoration(
               color: AppColors.surfaceRecessed,
