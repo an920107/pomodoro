@@ -25,5 +25,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('screen_settings')), findsOneWidget);
     expect(find.text('裝置參數與專注防護'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('btn_protocol_self_check')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('txt_protocol_self_check_result')), findsOneWidget);
+    expect(find.textContaining('通過：'), findsOneWidget);
   });
 }

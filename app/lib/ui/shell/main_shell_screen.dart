@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/logging/app_logger.dart';
+import '../../core/protocol/protocol_self_check.dart';
 import '../../core/theme/app_theme.dart';
 
 /// Top-level navigation tabs for the Phase 1 application shell.
@@ -171,7 +172,7 @@ class _ModeBadge extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            'Phase 1 殼層',
+            '協定 v1.2 就緒',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: AppColors.ink,
                 ),
@@ -252,6 +253,10 @@ class _TabPlaceholderPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
+        if (tab == AppTab.settings) ...<Widget>[
+          const _ProtocolSelfCheckCard(),
+          const SizedBox(height: 16),
+        ],
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(14),
@@ -269,13 +274,115 @@ class _TabPlaceholderPanel extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                '此畫面為 Commit 1 建立的四分頁導覽基線，尚未啟動 BLE 與模擬韌體串流，因此不顯示虛擬計時數值。',
+                '此畫面為導覽基線，v1.2 協定模型與序列 RPC 佇列已就緒；待後續 Commit 接上模擬韌體串流與介面控制。',
                 style: textTheme.bodyMedium,
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ProtocolSelfCheckCard extends StatefulWidget {
+  const _ProtocolSelfCheckCard();
+
+  @override
+  State<_ProtocolSelfCheckCard> createState() => _ProtocolSelfCheckCardState();
+}
+
+class _ProtocolSelfCheckCardState extends State<_ProtocolSelfCheckCard> {
+  bool _running = false;
+  String? _result;
+  bool _hasError = false;
+
+  Future<void> _runCheck() async {
+    if (_running) return;
+    setState(() {
+      _running = true;
+      _hasError = false;
+    });
+    try {
+      final summary = await runProtocolSelfCheck();
+      if (!mounted) return;
+      setState(() {
+        _result = summary;
+        _hasError = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _result = '自檢失敗：$e';
+        _hasError = true;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _running = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              '協定層實機診斷',
+              style: textTheme.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '驗證 ASCII/120B 封包格式、Model 解析與序列 RPC 佇列（輸出 [BLE-TX] / [BLE-RX] 至 logcat）。',
+              style: textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('btn_protocol_self_check'),
+                onPressed: _running ? null : _runCheck,
+                icon: const Icon(Icons.verified_outlined, size: 18),
+                label: Text(_running ? '執行中...' : '執行 v1.2 協定與佇列實機自檢'),
+              ),
+            ),
+            if (_result != null) ...<Widget>[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceRecessed,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _hasError
+                        ? AppColors.signalFocus
+                        : AppColors.signalBreak,
+                  ),
+                ),
+                child: Text(
+                  _result!,
+                  key: const Key('txt_protocol_self_check_result'),
+                  style: textTheme.bodyMedium?.copyWith(
+                    color: _hasError
+                        ? AppColors.signalFocus
+                        : AppColors.signalBreak,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
