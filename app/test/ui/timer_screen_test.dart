@@ -29,7 +29,10 @@ void main() {
     Widget buildApp() {
       return ProviderScope(
         overrides: [
-          mockBleRepositoryProvider.overrideWithValue(mockRepo),
+          mockBleRepositoryProvider.overrideWith((ref) {
+            ref.onDispose(mockRepo.dispose);
+            return mockRepo;
+          }),
         ],
         child: const PomodoroApp(),
       );

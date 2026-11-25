@@ -21,6 +21,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('screen_stats')), findsOneWidget);
     expect(find.text('專注歷史與報表'), findsOneWidget);
+    expect(find.byKey(const Key('chart_weekly_focus')), findsOneWidget);
+    expect(find.byKey(const Key('empty_stats_logs')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('nav_settings')));
     await tester.pumpAndSettle();

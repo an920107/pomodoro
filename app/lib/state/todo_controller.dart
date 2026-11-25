@@ -79,13 +79,12 @@ class TodoListState {
 class TodoController extends Notifier<TodoListState> {
   StreamSubscription<BleConnectionSnapshot>? _connectionSub;
   bool _disposed = false;
-  late bool _wasConnected;
 
   @override
   TodoListState build() {
     _disposed = false;
     final repo = ref.watch(bleRepositoryProvider);
-    _wasConnected = repo.currentConnection.state.isConnected;
+    final initialConnected = repo.currentConnection.state.isConnected;
 
     _connectionSub?.cancel();
     _connectionSub = repo.connectionStream.listen(_onConnectionChanged);
@@ -95,11 +94,7 @@ class TodoController extends Notifier<TodoListState> {
       _connectionSub?.cancel();
     });
 
-    if (_wasConnected) {
-      Future<void>.microtask(loadTodos);
-    }
-
-    return TodoListState(isConnected: _wasConnected);
+    return TodoListState(isConnected: initialConnected);
   }
 
   void clearError() {
@@ -107,10 +102,10 @@ class TodoController extends Notifier<TodoListState> {
     state = state.copyWith(clearError: true);
   }
 
-  Future<void> loadTodos() async {
-    if (_disposed) return;
+  Future<List<TodoItem>> loadTodos() async {
+    if (_disposed) return state.items;
     final repo = ref.read(bleRepositoryProvider);
-    if (!repo.currentConnection.state.isConnected) return;
+    if (!repo.currentConnection.state.isConnected) return state.items;
 
     state = state.copyWith(isLoading: true, clearError: true);
     try {
@@ -119,15 +114,20 @@ class TodoController extends Notifier<TodoListState> {
       for (var i = 0; i < meta.length; i++) {
         loaded.add(await repo.getTodoItem(i));
       }
-      if (_disposed) return;
+      if (_disposed) return state.items;
+      final unmodifiable = List<TodoItem>.unmodifiable(loaded);
+      await ref.read(appDatabaseProvider).upsertKnownTodos(unmodifiable);
+      if (_disposed) return state.items;
       state = state.copyWith(
-        items: List<TodoItem>.unmodifiable(loaded),
+        items: unmodifiable,
         maxCount: meta.max,
         isLoading: false,
       );
+      return unmodifiable;
     } on PomodoroProtocolException catch (e) {
-      if (_disposed) return;
+      if (_disposed) return state.items;
       state = state.copyWith(isLoading: false, errorMessage: e.message);
+      return state.items;
     }
   }
 
@@ -151,8 +151,15 @@ class TodoController extends Notifier<TodoListState> {
     try {
       final res = await repo.appendTodo(title);
       if (_disposed) return false;
-      final updated = List<TodoItem>.from(state.items)
-        ..add(TodoItem(index: res.index, id: res.id, title: title, done: false));
+      final addedItem = TodoItem(
+        index: res.index,
+        id: res.id,
+        title: title,
+        done: false,
+      );
+      await ref.read(appDatabaseProvider).upsertKnownTodo(addedItem);
+      if (_disposed) return false;
+      final updated = List<TodoItem>.from(state.items)..add(addedItem);
       state = state.copyWith(
         items: List<TodoItem>.unmodifiable(_reindexed(updated)),
         isMutating: false,
@@ -194,6 +201,10 @@ class TodoController extends Notifier<TodoListState> {
         title: normalizedTitle,
         done: done,
       );
+      if (normalizedTitle != null) {
+        await ref.read(appDatabaseProvider).upsertKnownTodo(updated[index]);
+        if (_disposed) return false;
+      }
       state = state.copyWith(
         items: List<TodoItem>.unmodifiable(updated),
         isMutating: false,
@@ -272,12 +283,8 @@ class TodoController extends Notifier<TodoListState> {
   void _onConnectionChanged(BleConnectionSnapshot snapshot) {
     if (_disposed) return;
     final isNowConnected = snapshot.state.isConnected;
-    final transitionedToConnected = !_wasConnected && isNowConnected;
-    _wasConnected = isNowConnected;
-
-    state = state.copyWith(isConnected: isNowConnected);
-    if (transitionedToConnected) {
-      unawaited(loadTodos());
+    if (state.isConnected != isNowConnected) {
+      state = state.copyWith(isConnected: isNowConnected);
     }
   }
 

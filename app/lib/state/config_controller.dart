@@ -47,13 +47,11 @@ class ConfigState {
 class ConfigController extends Notifier<ConfigState> {
   StreamSubscription<BleConnectionSnapshot>? _connectionSub;
   bool _disposed = false;
-  late bool _wasConnected;
-
   @override
   ConfigState build() {
     _disposed = false;
     final repo = ref.watch(bleRepositoryProvider);
-    _wasConnected = repo.currentConnection.state.isConnected;
+    final initialConnected = repo.currentConnection.state.isConnected;
 
     _connectionSub?.cancel();
     _connectionSub = repo.connectionStream.listen(_onConnectionChanged);
@@ -63,11 +61,7 @@ class ConfigController extends Notifier<ConfigState> {
       _connectionSub?.cancel();
     });
 
-    if (_wasConnected) {
-      Future<void>.microtask(loadConfig);
-    }
-
-    return ConfigState(isConnected: _wasConnected);
+    return ConfigState(isConnected: initialConnected);
   }
 
   void clearError() {
@@ -119,12 +113,8 @@ class ConfigController extends Notifier<ConfigState> {
   void _onConnectionChanged(BleConnectionSnapshot snapshot) {
     if (_disposed) return;
     final isNowConnected = snapshot.state.isConnected;
-    final transitionedToConnected = !_wasConnected && isNowConnected;
-    _wasConnected = isNowConnected;
-
-    state = state.copyWith(isConnected: isNowConnected);
-    if (transitionedToConnected) {
-      unawaited(loadConfig());
+    if (state.isConnected != isNowConnected) {
+      state = state.copyWith(isConnected: isNowConnected);
     }
   }
 }

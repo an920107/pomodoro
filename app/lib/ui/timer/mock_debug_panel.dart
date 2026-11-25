@@ -135,6 +135,15 @@ class _MockDebugPanelState extends ConsumerState<MockDebugPanel> {
                         },
                       ),
                       _SimActionButton(
+                        key: const Key('mock_btn_inject_unsynced_log'),
+                        label: '注入未校時紀錄',
+                        icon: Icons.history_rounded,
+                        onPressed: () => mockRepo.injectOfflineSessionLog(
+                          startEpoch: 0,
+                          durationSeconds: 1500,
+                        ),
+                      ),
+                      _SimActionButton(
                         key: const Key('mock_btn_power_cycle'),
                         label: '模擬斷電重啟',
                         icon: Icons.power_settings_new_rounded,

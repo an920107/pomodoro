@@ -174,10 +174,6 @@ class PomodoroController extends Notifier<PomodoroViewState> {
       _safetyValveTimer = null;
     });
 
-    if (_lastConnectionState.isConnected) {
-      Future<void>.microtask(_refreshStatusOnly);
-    }
-
     return PomodoroViewState(
       connection: repo.currentConnection,
       status: repo.latestStatus ?? const DeviceStatus.initial(),
@@ -194,6 +190,12 @@ class PomodoroController extends Notifier<PomodoroViewState> {
   void clearError() {
     if (state.errorMessage == null) return;
     state = state.copyWith(clearError: true);
+  }
+
+  /// Applies a freshly fetched [DeviceStatus] snapshot (e.g. from Step 4 handshake).
+  void applyDeviceStatus(DeviceStatus status) {
+    if (_disposed) return;
+    state = state.copyWith(status: status, clearError: true);
   }
 
   Future<void> _refreshStatusOnly() async {
@@ -298,7 +300,6 @@ class PomodoroController extends Notifier<PomodoroViewState> {
         safetyValveTripped: false,
         clearError: true,
       );
-      unawaited(_refreshStatusOnly());
       return;
     }
 
