@@ -6,6 +6,8 @@ import '../../core/protocol/mock_ble_self_check.dart';
 import '../../core/protocol/protocol_self_check.dart';
 import '../../core/theme/app_theme.dart';
 import '../../state/ble_providers.dart';
+import '../timer/timer_screen.dart';
+import 'widgets/connection_banner.dart';
 
 /// Top-level navigation tabs for the Phase 1 application shell.
 enum AppTab {
@@ -98,12 +100,21 @@ class MainShellScreen extends ConsumerWidget {
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: _TabPlaceholderPanel(
-            key: Key('screen_${activeTab.name}'),
-            tab: activeTab,
-          ),
+        child: Column(
+          children: <Widget>[
+            const ConnectionBanner(),
+            Expanded(
+              child: activeTab == AppTab.timer
+                  ? const TimerScreen(key: Key('screen_timer'))
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: _TabPlaceholderPanel(
+                        key: Key('screen_${activeTab.name}'),
+                        tab: activeTab,
+                      ),
+                    ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: DecoratedBox(

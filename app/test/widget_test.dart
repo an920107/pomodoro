@@ -9,7 +9,7 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: PomodoroApp()));
 
     expect(find.byKey(const Key('screen_timer')), findsOneWidget);
-    expect(find.text('專注計時控制'), findsOneWidget);
+    expect(find.byKey(const Key('btn_start_focus')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('nav_todos')));
     await tester.pumpAndSettle();
